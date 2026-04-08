@@ -14,7 +14,8 @@ import {
   Calendar,
   ChevronDown,
   Mail,
-  CloudDownload
+  CloudDownload,
+  RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -67,7 +68,7 @@ export default function App() {
     {
       id: '1',
       type: 'ai',
-      content: 'Welcome messages from Savvy...\nWhat kind of decision we are making today?',
+      content: "Hello! I'm your PM assistant Savvy. Is there anything specific you'd like to dive into today?",
       options: ['New Feature', 'Cost Reduction', 'Trade-off analysis'],
     },
   ]);
@@ -121,6 +122,22 @@ export default function App() {
     }, 1500);
   };
 
+  const handleReset = () => {
+    setMessages([
+      {
+        id: '1',
+        type: 'ai',
+        content: "Hello! I'm your PM assistant Savvy. Is there anything specific you'd like to dive into today?",
+        options: ['New Feature', 'Cost Reduction', 'Trade-off analysis'],
+      },
+    ]);
+    setInputValue('');
+    setIsTyping(false);
+    setShowSidePanel(false);
+    setPanelView('table');
+    setStep(0);
+  };
+
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
 
@@ -136,7 +153,7 @@ export default function App() {
         setMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
           type: 'ai',
-          content: "For such decision, we would be trading off space for performance. Looking at the data it seems like ebx users unplug their device for a minimum of 8hrs and on avg. 5hrs. Here is a custom report on this point. Could you share more around why we should explore this option?",
+          content: "A 24-hour battery requires a careful balance between internal volume and system performance. Telemetry data shows that EBX users typically remain unplugged for an average of 5 hours, with 8 hours being the upper bound for most workflows. Here is a custom report on this point. What are the primary factors driving the need for this extended capacity?",
           hasPanel: true,
           panelView: 'table'
         }]);
@@ -154,12 +171,25 @@ export default function App() {
           type: 'ai',
           content: "I see, we don’t want to lose these big customers. Let’s dig a little deeper. We can analyze whether a 24‑hour battery aligns with broader market needs or if it’s a niche requirement.",
           hasPanel: true,
-          panelView: 'chart',
-          options: ["create an email with the key info we discussed", "create a report to show to your management"]
+          panelView: 'chart'
         }]);
         setPanelView('chart');
         setShowSidePanel(true);
-        setStep(4);
+        
+        // Final conclusion message after a short delay
+        setTimeout(() => {
+          setIsTyping(true);
+          setTimeout(() => {
+            setIsTyping(false);
+            setMessages(prev => [...prev, {
+              id: (Date.now() + 2).toString(),
+              type: 'ai',
+              content: "If we look at the two battery sizes we have today, we can see how the most frequently purchased battery model (the longer battery one) has been failing more lately... maybe that's why customers are complaining. In fact, if you look at the avg. time unplugged, the smaller model is already enough for their users so they are already buying more than they need. Maybe you should look into the failing situation with the quality or engineering department and talk to customers again.",
+              options: ["create an email with the key info we discussed", "create a report to show to your management"]
+            }]);
+            setStep(4);
+          }, 2500);
+        }, 1500);
       }, 2000);
     }
   };
@@ -170,12 +200,11 @@ export default function App() {
       <aside className="w-64 flex-shrink-0 bg-brand-bg border-r border-brand-border flex flex-col p-4">
         <div className="flex items-center gap-2 mb-8 px-2">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M16 0C7.16344 0 0 7.16344 0 16C0 24.8366 7.16344 32 16 32C24.8366 32 32 24.8366 32 16C32 7.16344 24.8366 0 16 0ZM16 28C9.37258 28 4 22.6274 4 16C4 9.37258 9.37258 4 16 4C22.6274 4 28 9.37258 28 16C28 22.6274 22.6274 28 16 28Z" fill="#254EDB" fillOpacity="0.2"/>
-            <rect x="11" y="4" width="10" height="10" rx="5" fill="#254EDB" />
-            <rect x="18" y="11" width="10" height="10" rx="5" fill="#3B82F6" />
-            <rect x="11" y="18" width="10" height="10" rx="5" fill="#254EDB" />
-            <rect x="4" y="11" width="10" height="10" rx="5" fill="#60A5FA" />
-            <rect x="13" y="13" width="6" height="6" rx="1" fill="white" />
+            <rect x="12" y="0" width="18" height="18" rx="7" fill="#1D4ED8" />
+            <rect x="2" y="14" width="18" height="18" rx="7" fill="#1D4ED8" />
+            <rect x="2" y="2" width="18" height="18" rx="7" fill="#7DD3FC" fillOpacity="0.8" />
+            <rect x="12" y="12" width="18" height="18" rx="7" fill="#38BDF8" fillOpacity="0.8" />
+            <rect x="13.5" y="13.5" width="5" height="5" rx="1" fill="white" />
           </svg>
           <span className="font-bold text-xl tracking-tight">PM Savvy</span>
         </div>
@@ -215,7 +244,7 @@ export default function App() {
                   <div 
                     className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${
                       msg.type === 'user' 
-                        ? 'bg-brand-accent text-white rounded-tr-none' 
+                        ? 'bg-[#2B4BCB] text-white rounded-tr-none' 
                         : 'bg-brand-panel text-white/90 rounded-tl-none'
                     }`}
                   >
@@ -344,10 +373,19 @@ export default function App() {
                     handleSendMessage();
                   }
                 }}
-                placeholder="Can I help you?"
+                placeholder="What's on your mind?"
                 className="bg-transparent border-none outline-none resize-none text-sm text-white placeholder:text-brand-text-dim h-24"
               />
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                {step === 4 && (
+                  <button 
+                    onClick={handleReset}
+                    className="h-8 px-3 bg-white/5 border border-white/10 rounded-lg flex items-center gap-2 text-xs font-medium text-brand-text-dim hover:bg-white/10 hover:text-white transition-all"
+                  >
+                    <RotateCcw size={14} />
+                    Restart Demo
+                  </button>
+                )}
                 <button 
                   onClick={handleSendMessage}
                   disabled={!inputValue.trim()}
