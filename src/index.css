@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-bg: #0F1117;
+  --color-brand-main: #161922;
+  --color-brand-panel: #1C212B;
+  --color-brand-accent: #254EDB;
+  --color-brand-border: #2D333F;
+  --color-brand-text-dim: #94A3B8;
+}
+
+@keyframes typing {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+.typing-dot {
+  animation: typing 1s infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+.option-btn {
+  border-color: #2775FF;
+  background-color: rgba(39,117,255,0.2);
+}
