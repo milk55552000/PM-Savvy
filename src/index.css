@@ -38,5 +38,18 @@
 
 .option-btn {
   border-color: #2775FF;
-  background-color: rgba(39,117,255,0.2);
+  background-color: rgba(100, 182, 255, 0.2);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+aside {
+    background-color: rgba(255, 255, 255, 0.06);
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
   MoreVertical, 
@@ -10,18 +10,34 @@ import {
   FileText,
   Battery,
   Cpu,
-  Wind
+  Wind,
+  Calendar,
+  ChevronDown,
+  Mail,
+  CloudDownload
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  ResponsiveContainer
+} from 'recharts';
 
 // --- Types ---
 type MessageType = 'ai' | 'user';
+type PanelView = 'table' | 'chart';
 
 interface Message {
   id: string;
   type: MessageType;
   content: string;
   options?: string[];
+  selectedOption?: string;
+  hasPanel?: boolean;
+  panelView?: PanelView;
 }
 
 // --- Constants ---
@@ -34,13 +50,20 @@ const COLORS = {
   textDim: '#94A3B8',
 };
 
+const CHART_DATA = [
+  { name: 'JAN 2022', kw50: 90, kw100: 80 },
+  { name: 'DEC 2022', kw50: 85, kw100: 78 },
+  { name: 'JAN 2023', kw50: 125, kw100: 95 },
+  { name: 'DEC 2023', kw50: 130, kw100: 130 },
+  { name: 'JAN 2024', kw50: 122, kw100: 145 },
+  { name: 'DEC 2024', kw50: 125, kw100: 200 },
+  { name: 'JAN 2025', kw50: 140, kw100: 210 },
+  { name: 'DEC 2025', kw50: 145, kw100: 250 },
+  { name: 'APR 2026', kw50: 125, kw100: 285 },
+];
+
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '0',
-      type: 'user',
-      content: 'This is a question asked by user...',
-    },
     {
       id: '1',
       type: 'ai',
@@ -51,6 +74,7 @@ export default function App() {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showSidePanel, setShowSidePanel] = useState(false);
+  const [panelView, setPanelView] = useState<PanelView>('table');
   const [step, setStep] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -62,7 +86,12 @@ export default function App() {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const handleOptionClick = (option: string) => {
+  const handleOptionClick = (option: string, messageId: string) => {
+    // Update the message with the selected option
+    setMessages(prev => prev.map(m => 
+      m.id === messageId ? { ...m, selectedOption: option } : m
+    ));
+
     // Add user message
     const userMsg: Message = { id: Date.now().toString(), type: 'user', content: option };
     setMessages(prev => [...prev, userMsg]);
@@ -86,6 +115,7 @@ export default function App() {
           type: 'ai',
           content: "What is the new feature we're thinking for battery"
         }]);
+        setInputValue("should we add a 24hr battery to the next gen of EBX?");
         setStep(2);
       }
     }, 1500);
@@ -99,17 +129,39 @@ export default function App() {
     setInputValue('');
     setIsTyping(true);
 
-    // Simulate final AI response
-    setTimeout(() => {
-      setIsTyping(false);
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: "For such decision, we would be trading off space for performance. Looking at the data it seems like ebx users unplug their device for a minimum of 8hrs and on avg. 5hrs. Here is a custom report on this point. Could you share more around why we should explore this option?"
-      }]);
-      setShowSidePanel(true);
-      setStep(3);
-    }, 2000);
+    if (step === 2) {
+      // Step 2: User asks about 24hr battery
+      setTimeout(() => {
+        setIsTyping(false);
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(),
+          type: 'ai',
+          content: "For such decision, we would be trading off space for performance. Looking at the data it seems like ebx users unplug their device for a minimum of 8hrs and on avg. 5hrs. Here is a custom report on this point. Could you share more around why we should explore this option?",
+          hasPanel: true,
+          panelView: 'table'
+        }]);
+        setInputValue("Management suggested we look into this because a couple of our largest customers mentioned that extended battery life would be valuable for their workflows. They often run devices continuously in field operations and don’t want interruptions.");
+        setShowSidePanel(true);
+        setPanelView('table');
+        setStep(3);
+      }, 2000);
+    } else if (step === 3) {
+      // Step 3: User explains management suggestion
+      setTimeout(() => {
+        setIsTyping(false);
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(),
+          type: 'ai',
+          content: "I see, we don’t want to lose these big customers. Let’s dig a little deeper. We can analyze whether a 24‑hour battery aligns with broader market needs or if it’s a niche requirement.",
+          hasPanel: true,
+          panelView: 'chart',
+          options: ["create an email with the key info we discussed", "create a report to show to your management"]
+        }]);
+        setPanelView('chart');
+        setShowSidePanel(true);
+        setStep(4);
+      }, 2000);
+    }
   };
 
   return (
@@ -136,13 +188,13 @@ export default function App() {
         <div className="flex-1 overflow-y-auto">
           <div className="text-[10px] font-bold text-brand-text-dim uppercase tracking-wider mb-3 px-2">Recent Chats</div>
           <div className="space-y-1">
-            <div className="flex items-center justify-between p-2 rounded-lg bg-brand-accent/10 text-brand-accent text-sm font-medium border border-brand-accent/20">
+            <div className="flex items-center justify-between p-2 px-3 rounded-xl bg-[#2D333F] text-[#74B1FF] text-sm font-medium transition-colors cursor-pointer">
               <span className="truncate">New feature for EBS Battery</span>
-              <MoreVertical size={14} className="opacity-60" />
+              <MoreVertical size={14} className="text-white/40" />
             </div>
-            <div className="flex items-center justify-between p-2 rounded-lg hover:bg-brand-panel text-brand-text-dim text-sm transition-colors">
+            <div className="flex items-center justify-between p-2 px-3 rounded-xl hover:bg-[#2D333F]/50 text-[#74B1FF] text-sm transition-colors cursor-pointer">
               <span className="truncate">Fan decision</span>
-              <MoreVertical size={14} className="opacity-40" />
+              <MoreVertical size={14} className="text-white/20" />
             </div>
           </div>
         </div>
@@ -167,22 +219,95 @@ export default function App() {
                         : 'bg-brand-panel text-white/90 rounded-tl-none'
                     }`}
                   >
-                    {msg.content.split('\n').map((line, i) => (
-                      <p key={i} className={i > 0 ? 'mt-2' : ''}>{line}</p>
-                    ))}
-                  </div>
+                      {msg.content.split('\n').map((line, i) => {
+                        const triggerTable = 'Here is a custom report on this point.';
+                        const triggerChart = 'Let’s dig a little deeper.';
+                        
+                        let displayLine: React.ReactNode = line;
+                        
+                        if (line.includes(triggerTable)) {
+                          const parts = line.split(triggerTable);
+                          displayLine = (
+                            <>
+                              {parts[0]}{triggerTable}
+                              {msg.hasPanel && msg.panelView === 'table' && (
+                                <button 
+                                  onClick={() => {
+                                    if (showSidePanel && panelView === 'table') {
+                                      setShowSidePanel(false);
+                                    } else {
+                                      setPanelView('table');
+                                      setShowSidePanel(true);
+                                    }
+                                  }}
+                                  className="option-btn inline-flex items-center gap-1.5 px-2 py-0.5 ml-1.5 rounded-md bg-[#2D333F] text-[10px] font-semibold text-[#74B1FF] hover:brightness-125 transition-all align-middle"
+                                >
+                                  Ref: Telemetry Metric
+                                </button>
+                              )}
+                              {parts[1]}
+                            </>
+                          );
+                        } else if (line.includes(triggerChart)) {
+                          const parts = line.split(triggerChart);
+                          displayLine = (
+                            <>
+                              {parts[0]}{triggerChart}
+                              {msg.hasPanel && msg.panelView === 'chart' && (
+                                <button 
+                                  onClick={() => {
+                                    if (showSidePanel && panelView === 'chart') {
+                                      setShowSidePanel(false);
+                                    } else {
+                                      setPanelView('chart');
+                                      setShowSidePanel(true);
+                                    }
+                                  }}
+                                  className="option-btn inline-flex items-center gap-1.5 px-2 py-0.5 ml-1.5 rounded-md bg-[#2D333F] text-[10px] font-semibold text-[#74B1FF] hover:brightness-125 transition-all align-middle"
+                                >
+                                  Ref: Battery Failure Trend
+                                </button>
+                              )}
+                              {parts[1]}
+                            </>
+                          );
+                        }
 
-                  {msg.options && (
+                        return (
+                          <div key={i} className={i > 0 ? 'mt-2' : ''}>
+                            {displayLine}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Removed old button position */}
+
+                    {msg.options && (
                     <div className="flex flex-wrap gap-2 mt-4">
-                      {msg.options.map((opt) => (
-                        <button
-                          key={opt}
-                          onClick={() => handleOptionClick(opt)}
-                          className="option-btn px-4 py-2 rounded-full border border-brand-border text-xs font-medium hover:bg-brand-accent hover:border-brand-accent transition-all duration-200"
-                        >
-                          {opt}
-                        </button>
-                      ))}
+                      {msg.options.map((opt) => {
+                        const isSelected = msg.selectedOption === opt;
+                        const hasSelection = !!msg.selectedOption;
+                        
+                        return (
+                          <button
+                            key={opt}
+                            onClick={() => !hasSelection && handleOptionClick(opt, msg.id)}
+                            disabled={hasSelection}
+                            className={`option-btn px-4 py-2 rounded-full border text-xs font-medium transition-all duration-200 flex items-center gap-2 ${
+                              isSelected 
+                                ? 'bg-brand-accent border-brand-accent text-white' 
+                                : hasSelection
+                                  ? 'opacity-30 border-brand-border text-brand-text-dim cursor-not-allowed'
+                                  : 'border-brand-border text-white hover:brightness-125'
+                            }`}
+                          >
+                            {opt === "create an email with the key info we discussed" && <Mail size={14} />}
+                            {opt === "create a report to show to your management" && <CloudDownload size={14} />}
+                            {opt}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </motion.div>
@@ -240,90 +365,154 @@ export default function App() {
       <AnimatePresence>
         {showSidePanel && (
           <motion.aside
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="w-[480px] flex-shrink-0 bg-brand-bg border-l border-brand-border flex flex-col p-6 overflow-y-auto"
+            initial={{ width: 0, opacity: 0, x: 20 }}
+            animate={{ width: 640, opacity: 1, x: 0 }}
+            exit={{ width: 0, opacity: 0, x: 20 }}
+            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            className="flex-shrink-0 bg-[#0F1117]/80 backdrop-blur-xl border border-white/10 flex flex-col p-8 overflow-y-auto z-50 shadow-2xl rounded-2xl my-4 mr-4 no-scrollbar"
           >
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-lg font-semibold">Telemetry Metrics</h2>
-              <button 
-                onClick={() => setShowSidePanel(false)}
-                className="p-1 hover:bg-brand-panel rounded transition-colors"
-              >
-                <X size={20} className="text-brand-text-dim" />
-              </button>
+            <div className="flex items-center justify-between mb-8 min-w-[576px]">
+              <h2 className="text-xl font-semibold tracking-tight">
+                {panelView === 'table' ? 'Telemetry Metrics' : 'Battery Failure Trend'}
+              </h2>
+              <div className="flex items-center gap-4">
+                {panelView === 'chart' && (
+                  <div className="flex items-center gap-6 mr-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#A855F7]" />
+                      <span className="text-xs text-white/60">50kW</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#0EA5E9]" />
+                      <span className="text-xs text-white/60">100kW</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10 cursor-pointer hover:bg-white/10 transition-colors ml-4">
+                      <Calendar size={14} className="text-brand-text-dim" />
+                      <span className="text-xs text-white/80">Jan 2022 - Apr 2026</span>
+                      <ChevronDown size={14} className="text-brand-text-dim" />
+                    </div>
+                  </div>
+                )}
+                <button 
+                  onClick={() => setShowSidePanel(false)}
+                  className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                >
+                  <X size={18} className="text-brand-text-dim" />
+                </button>
+              </div>
             </div>
 
-            <div className="bg-brand-panel rounded-xl border border-brand-border p-4 mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-brand-text-dim uppercase">Battery Telemetry</span>
+            {panelView === 'table' ? (
+              <>
+                <div className="bg-[#1C212B]/40 rounded-xl border border-white/5 p-6 mb-8 min-w-[576px]">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-brand-text-dim uppercase tracking-widest">Battery Telemetry</span>
+                    </div>
+                    <div className="flex gap-3">
+                      <Copy size={16} className="text-brand-text-dim cursor-pointer hover:text-white transition-colors" />
+                      <Download size={16} className="text-brand-text-dim cursor-pointer hover:text-white transition-colors" />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 mb-6 text-[10px] text-brand-text-dim">
+                    <div className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1.5 rounded-md border border-white/5">Series <span className="text-white font-medium bg-white/10 px-1.5 rounded">X 8</span></div>
+                    <div className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1.5 rounded-md border border-white/5">Gen <span className="text-white font-medium bg-white/10 px-1.5 rounded">1</span></div>
+                    <div className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1.5 rounded-md border border-white/5">Model <span className="text-white font-medium bg-white/10 px-1.5 rounded">ALL</span></div>
+                    <div className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1.5 rounded-md border border-white/5 ml-auto">Time frame <span className="text-white font-medium bg-white/10 px-1.5 rounded">3 yrs</span></div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[11px] text-left border-collapse">
+                      <thead>
+                        <tr className="text-brand-text-dim border-b border-white/10">
+                          <th className="pb-3 font-semibold uppercase tracking-wider">Type</th>
+                          <th className="pb-3 font-semibold uppercase tracking-wider">Field Unit</th>
+                          <th className="pb-3 font-semibold uppercase tracking-wider">hrs unplugged</th>
+                          <th className="pb-3 font-semibold uppercase tracking-wider">Battery Life</th>
+                          <th className="pb-3 font-semibold uppercase tracking-wider">Health</th>
+                          <th className="pb-3 font-semibold uppercase tracking-wider">Attach %</th>
+                          <th className="pb-3 font-semibold uppercase tracking-wider">BOM Cost</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-white/90">
+                        <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                          <td className="py-4 font-bold text-sm">50 KW</td>
+                          <td className="py-4">1 million</td>
+                          <td className="py-4">3.1 hrs</td>
+                          <td className="py-4">5hrs</td>
+                          <td className="py-4 text-emerald-400 font-medium">Healthy</td>
+                          <td className="py-4">20%</td>
+                          <td className="py-4">10 USD</td>
+                        </tr>
+                        <tr className="hover:bg-white/5 transition-colors">
+                          <td className="py-4 font-bold text-sm">100 KW</td>
+                          <td className="py-4">3 million</td>
+                          <td className="py-4">2.7 hrs</td>
+                          <td className="py-4">10hrs</td>
+                          <td className="py-4 text-rose-400 font-semibold">high failure</td>
+                          <td className="py-4">80%</td>
+                          <td className="py-4">30 USD</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Copy size={14} className="text-brand-text-dim cursor-pointer hover:text-white" />
-                  <Download size={14} className="text-brand-text-dim cursor-pointer hover:text-white" />
-                </div>
+              </>
+            ) : (
+              <div className="flex-1 w-full min-h-[400px] mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={CHART_DATA}
+                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="color50" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#A855F7" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#A855F7" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="color100" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0EA5E9" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#0EA5E9" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#8E9299', fontSize: 10 }}
+                      dy={10}
+                    />
+                    <YAxis 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#8E9299', fontSize: 10 }}
+                      tickFormatter={(val) => `${val}K`}
+                    />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#1C212B', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                      itemStyle={{ fontSize: '12px' }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="kw50" 
+                      stroke="#A855F7" 
+                      strokeWidth={2}
+                      fillOpacity={1} 
+                      fill="url(#color50)" 
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="kw100" 
+                      stroke="#0EA5E9" 
+                      strokeWidth={2}
+                      fillOpacity={1} 
+                      fill="url(#color100)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
-
-              <div className="flex gap-4 mb-4 text-[10px] text-brand-text-dim">
-                <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded">Series <span className="text-white">X 8</span></div>
-                <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded">Gen <span className="text-white">1</span></div>
-                <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded">Model <span className="text-white">ALL</span></div>
-                <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded ml-auto">Time frame <span className="text-white">3 yrs</span></div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-[11px] text-left border-collapse">
-                  <thead>
-                    <tr className="text-brand-text-dim border-b border-brand-border">
-                      <th className="pb-2 font-medium">Type</th>
-                      <th className="pb-2 font-medium">Field Unit</th>
-                      <th className="pb-2 font-medium">hrs unplugged</th>
-                      <th className="pb-2 font-medium">Battery Life</th>
-                      <th className="pb-2 font-medium">Health</th>
-                      <th className="pb-2 font-medium">Attach %</th>
-                      <th className="pb-2 font-medium">BOM Cost</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-white/80">
-                    <tr className="border-b border-brand-border/50">
-                      <td className="py-3 font-bold">50 KW</td>
-                      <td className="py-3">1 million</td>
-                      <td className="py-3">3.1 hrs</td>
-                      <td className="py-3">5hrs</td>
-                      <td className="py-3 text-green-400">Healthy</td>
-                      <td className="py-3">20%</td>
-                      <td className="py-3">10 USD</td>
-                    </tr>
-                    <tr>
-                      <td className="py-3 font-bold">100 KW</td>
-                      <td className="py-3">3 million</td>
-                      <td className="py-3">2.7 hrs</td>
-                      <td className="py-3">10hrs</td>
-                      <td className="py-3 text-red-400 font-medium">high failure</td>
-                      <td className="py-3">80%</td>
-                      <td className="py-3">30 USD</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="text-xs text-brand-text-dim leading-relaxed mb-6">
-              Test 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answersTest 123 more answers
-            </div>
-
-            <div className="bg-brand-panel border border-brand-border rounded-lg p-3 flex items-center gap-3 group cursor-pointer hover:border-brand-accent transition-colors">
-              <div className="w-8 h-8 bg-white/5 rounded flex items-center justify-center">
-                <FileText size={16} className="text-brand-text-dim" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium truncate">3D mise global Reports Ipsos_4.29.22.pptx</div>
-              </div>
-              <Download size={14} className="text-brand-text-dim opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
+            )}
           </motion.aside>
         )}
       </AnimatePresence>
